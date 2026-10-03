@@ -12,6 +12,11 @@ Additionally, a layer will be added to limit the app's usage through a subscript
 
 1. **Environment**
    - Copy `.env.example` to `.env` and set DB URL, `SECRET_KEY_ACCESS_API`, `OPENAI_API_KEY`, `OPENAI_ORGANIZATION`, `FIRST_SUPERUSER`, `FIRST_SUPERUSER_PASSWORD`, etc.
+   - Security-related settings:
+     - `SECRET_KEY_ACCESS_API` must be at least 32 characters (`python -c "import secrets; print(secrets.token_urlsafe(48))"`).
+     - `BACKEND_CORS_ORIGINS` is a comma-separated list of browser origins allowed to call the API (default `http://localhost:3000`). Set it to your frontend's URL in production.
+     - `ACCESS_TOKEN_EXPIRE_MINUTES` defaults to 1440 (1 day).
+     - `LOG_LEVEL` defaults to `INFO`; avoid `DEBUG` in production.
 
 2. **Backend**
    ```bash

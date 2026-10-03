@@ -4,12 +4,14 @@ steps:
       [
         "build",
         "-t",
+        "gcr.io/$PROJECT_ID/context-qa:$BUILD_ID",
+        "-t",
         "gcr.io/$PROJECT_ID/context-qa:latest",
         "./backend",
       ]
 
   - name: "gcr.io/cloud-builders/docker"
-    args: ["push", "gcr.io/$PROJECT_ID/context-qa:latest"]
+    args: ["push", "--all-tags", "gcr.io/$PROJECT_ID/context-qa"]
 
   - name: "gcr.io/google.com/cloudsdktool/cloud-sdk"
     entrypoint: gcloud
@@ -17,10 +19,11 @@ steps:
       - "run"
       - "deploy"
       - "cloudrun-service"
-      - "--image=gcr.io/$PROJECT_ID/context-qa:latest"
+      - "--image=gcr.io/$PROJECT_ID/context-qa:$BUILD_ID"
       - "--region=us-central1"
       - "--platform=managed"
       - "--allow-unauthenticated"
 
 images:
+  - "gcr.io/$PROJECT_ID/context-qa:$BUILD_ID"
   - "gcr.io/$PROJECT_ID/context-qa:latest"
