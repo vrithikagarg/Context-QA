@@ -31,7 +31,8 @@ project_root = find_project_root(current_script_path)
 # Correctly construct the path to the config file relative to the project root
 ingestion_config_path = project_root / "app" / "config" / "ingestion.yml"
 
-ingestion_config = yaml.load(open(ingestion_config_path, "r"), Loader=yaml.FullLoader)
+with open(ingestion_config_path, "r") as _f:
+    ingestion_config = yaml.safe_load(_f)
 
 # Correctly construct the path to the data/raw directory relative to the project root
 path_input_folder = project_root.parent / ingestion_config.get(
@@ -80,7 +81,6 @@ class PDFExtractionPipeline:
             password=DATABASE_PASSWORD,
         )
 
-        logger.debug(f"Connection string: {self.connection_str}")
 
     def run(self, collection_name: str):
         logger.info(f"Running extraction pipeline for collection: {collection_name}")

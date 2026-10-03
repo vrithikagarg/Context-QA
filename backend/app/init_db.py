@@ -11,12 +11,13 @@ from app.models.user_model import User, UserCreate
 from dotenv import load_dotenv
 from loguru import logger
 import psycopg2
+from psycopg2 import sql
 from sqlalchemy.ext.asyncio import create_async_engine
 from sqlalchemy.future import select
 from sqlmodel import SQLModel, Session, create_engine, select
 
 
-engine = create_async_engine(str(settings.ASYNC_DATABASE_URI), echo=True)
+engine = create_async_engine(str(settings.ASYNC_DATABASE_URI), echo=False)
 
 
 async def create_extension():
@@ -46,12 +47,15 @@ def create_database(database_name, user, password, host, port):
 
         # Check if database exists
         cur.execute(
-            f"SELECT 1 FROM pg_catalog.pg_database WHERE datname = '{database_name}'"
+            "SELECT 1 FROM pg_catalog.pg_database WHERE datname = %s",
+            (database_name,),
         )
         exists = cur.fetchone()
         if not exists:
 
-            cur.execute(f"CREATE DATABASE {database_name}")
+            cur.execute(
+                sql.SQL("CREATE DATABASE {}").format(sql.Identifier(database_name))
+            )
             logger.info(f"Database '{database_name}' created.")
         else:
             logger.info(f"Database '{database_name}' already exists.")

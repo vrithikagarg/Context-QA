@@ -2,8 +2,8 @@ from pydantic_settings import BaseSettings
 from typing import List
 from loguru import logger
 from typing import Annotated, Any, Literal
+import os
 import sys
-import secrets
 
 from pydantic import (
     AnyUrl,
@@ -54,7 +54,7 @@ class Settings(BaseSettings):
 
 
 class LogConfig:
-    LOGGING_LEVEL = "DEBUG"
+    LOGGING_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()
     LOGGING_FORMAT = "<green>{time:YYYY-MM-DD HH:mm:ss}</green> | <level>{level}</level> | <level>{message}</level>"
 
     @staticmethod

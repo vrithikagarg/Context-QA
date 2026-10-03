@@ -1,5 +1,6 @@
 import os
 import yaml
+from collections import OrderedDict
 
 from app.core.config import logger, settings
 
@@ -34,13 +35,31 @@ router = APIRouter()
 
 config_path = os.path.join(os.path.dirname(__file__), "..", "..", "config/chat.yml")
 with open(config_path, "r") as config_file:
-    config = yaml.load(config_file, Loader=yaml.FullLoader)
+    config = yaml.safe_load(config_file)
 
 chat_config = config.get("CHAT_CONFIG", None)
 
-logger.info(f"Chat config: {chat_config}")
+logger.info("Chat config loaded")
 
-chat_history = [AIMessage(content="Hello, I am a bot. How can I help you?")]
+# Conversation history is kept per user (never shared between users) and is
+# bounded so memory use cannot grow without limit. NOTE: this lives in process
+# memory, so it is per worker/instance; move it to Redis or the database if
+# history must survive restarts or be shared across workers.
+MAX_HISTORY_MESSAGES = 20
+MAX_TRACKED_USERS = 1000
+_chat_histories: "OrderedDict[int, list]" = OrderedDict()
+
+
+def _get_history(user_id: int) -> list:
+    history = _chat_histories.get(user_id)
+    if history is None:
+        history = [AIMessage(content="Hello, I am a bot. How can I help you?")]
+        _chat_histories[user_id] = history
+        while len(_chat_histories) > MAX_TRACKED_USERS:
+            _chat_histories.popitem(last=False)  # evict least recently created
+    else:
+        _chat_histories.move_to_end(user_id)
+    return history
 
 
 def get_context_retriever_chain(vector_store):
@@ -90,8 +109,6 @@ async def chat_action(
     request: ChatBody,
     current_user: User = Depends(get_current_user),
 ):
-    global chat_history
-
     embeddings = OpenAIEmbeddings()
 
     store = PGVector(
@@ -107,8 +124,9 @@ async def chat_action(
     retriever_chain = get_context_retriever_chain(store)
     conversation_rag_chain = get_conversational_rag_chain(retriever_chain)
 
-    logger.info(f"User message: {user_message.content}")
-    logger.info(f"Chat history: {chat_history}")
+    # Do not log message content or history: it is user data.
+    logger.info(f"Chat request from user_id={current_user.id}")
+    chat_history = _get_history(current_user.id)
     response = conversation_rag_chain.invoke(
         {"chat_history": chat_history, "input": user_message}
     )
@@ -117,6 +135,9 @@ async def chat_action(
 
     ai_message = AIMessage(content=response["answer"])
     chat_history.append(ai_message)
+    # Keep the greeting plus the most recent turns only.
+    if len(chat_history) > MAX_HISTORY_MESSAGES:
+        del chat_history[1 : len(chat_history) - (MAX_HISTORY_MESSAGES - 1)]
 
     return {"data": response["answer"]}
 
