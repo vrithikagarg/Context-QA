@@ -19,6 +19,7 @@ from langchain.memory import ConversationBufferMemory
 
 from langchain.prompts.prompt import PromptTemplate
 from app.schemas.chat_schema import ChatBody
+from app.core.rate_limit import chat_limiter, raise_if_limited
 from fastapi import APIRouter, Depends
 from app.api.deps import CurrentUser, get_current_user
 from app.models.user_model import User
@@ -123,6 +124,10 @@ async def chat_action(
 
     retriever_chain = get_context_retriever_chain(store)
     conversation_rag_chain = get_conversational_rag_chain(retriever_chain)
+
+    key = f"user:{current_user.id}"
+    raise_if_limited(chat_limiter, key)
+    chat_limiter.record(key)
 
     # Do not log message content or history: it is user data.
     logger.info(f"Chat request from user_id={current_user.id}")

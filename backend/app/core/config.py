@@ -6,8 +6,8 @@ import os
 import sys
 
 from pydantic import (
-    AnyUrl,
     BeforeValidator,
+    field_validator,
 )
 
 
@@ -27,6 +27,21 @@ class Settings(BaseSettings):
 
     SECRET_KEY_ACCESS_API: str
 
+    @field_validator("SECRET_KEY_ACCESS_API")
+    @classmethod
+    def _secret_key_long_enough(cls, v: str) -> str:
+        if len(v) < 32:
+            raise ValueError(
+                "SECRET_KEY_ACCESS_API must be at least 32 characters; "
+                'generate one with: python -c "import secrets; print(secrets.token_urlsafe(48))"'
+            )
+        return v
+
+    # Comma-separated list or JSON list of allowed browser origins.
+    BACKEND_CORS_ORIGINS: Annotated[list[str] | str, BeforeValidator(parse_cors)] = [
+        "http://localhost:3000"
+    ]
+
     DB_HOST: str
     DB_PORT: str
     DB_NAME: str
@@ -36,7 +51,7 @@ class Settings(BaseSettings):
     OPENAI_API_KEY: str
     OPENAI_ORGANIZATION: str
 
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 8
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24
 
     FIRST_SUPERUSER: str
     FIRST_SUPERUSER_PASSWORD: str

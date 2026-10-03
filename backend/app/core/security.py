@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta
+from functools import lru_cache
 from typing import Any
 
 from jose import jwt
@@ -27,3 +28,11 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
 
 def get_password_hash(password: str) -> str:
     return pwd_context.hash(password)
+
+
+@lru_cache(maxsize=1)
+def get_dummy_hash() -> str:
+    """Hash verified against when the account does not exist, so login takes the
+    same time either way (prevents discovering registered emails by timing).
+    Computed lazily so importing this module never depends on the hash backend."""
+    return get_password_hash("not-a-real-password")
